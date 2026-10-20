@@ -17,6 +17,8 @@ from db import database
 from routers import scan as scan_router
 from routers import media as media_router
 from routers import media_write as media_write_router
+from routers import thumbnail as thumbnail_router
+from routers import stream as stream_router
 
 
 @asynccontextmanager
@@ -58,12 +60,12 @@ app.mount("/static", StaticFiles(directory=str(_dashboard_static)), name="static
 app.include_router(scan_router.router)
 app.include_router(media_router.router)
 app.include_router(media_write_router.router)
+app.include_router(thumbnail_router.router)
+app.include_router(stream_router.router)
 
-# 后续模块挂载点（M5 起依次启用）
-# from routers import playlist, stream, thumbnail
+# 后续模块挂载点（M7 起依次启用）
+# from routers import playlist
 # app.include_router(playlist.router)
-# app.include_router(stream.router)
-# app.include_router(thumbnail.router)
 # ---------------------------------------------------------------------------
 # app.include_router(media.router)
 # app.include_router(playlist.router)
