@@ -19,9 +19,10 @@ import time
 import webbrowser
 from pathlib import Path
 
-HOST = "127.0.0.1"
+BIND_HOST = "0.0.0.0"          # 局域网可达：手机连同一 WiFi 可访问
+LOCAL_HOST = "127.0.0.1"
 PORT = 8123
-APP_URL = f"http://{HOST}:{PORT}/"
+APP_URL = f"http://{LOCAL_HOST}:{PORT}/"
 
 
 def _exe_dir() -> Path:
@@ -30,10 +31,22 @@ def _exe_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
+def _lan_ip() -> str:
+    """尽力获取本机局域网 IP（手机访问用）；失败返回空串。"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except Exception:
+        return ""
+    finally:
+        s.close()
+
+
 def _port_in_use() -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(1.0)
-        return s.connect_ex((HOST, PORT)) == 0
+        return s.connect_ex((LOCAL_HOST, PORT)) == 0
 
 
 def _wait_and_open_browser(timeout: float = 30.0) -> None:
@@ -42,7 +55,7 @@ def _wait_and_open_browser(timeout: float = 30.0) -> None:
     while time.time() < deadline:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1.0)
-            if s.connect_ex((HOST, PORT)) == 0:
+            if s.connect_ex((LOCAL_HOST, PORT)) == 0:
                 break
         time.sleep(0.5)
     webbrowser.open(APP_URL)
@@ -61,7 +74,7 @@ def main() -> int:
     print("=" * 52)
 
     if _port_in_use():
-        print(f"[错误] {HOST}:{PORT} 端口被占用。")
+        print(f"[错误] {LOCAL_HOST}:{PORT} 端口被占用。")
         print("请先关闭占用该端口的程序（可能是另一个 MaterialHub），再重新双击启动。")
         input("按回车退出 …")
         return 1
@@ -71,11 +84,15 @@ def main() -> int:
 
     threading.Thread(target=_wait_and_open_browser, daemon=True).start()
 
+    lan_ip = _lan_ip()
     print(f"[就绪] 浏览器将自动打开 {APP_URL}")
+    if lan_ip:
+        print(f"[手机] 同一 WiFi 下，手机浏览器访问 http://{lan_ip}:{PORT}/")
+        print("      （首次运行 Windows 防火墙弹窗请点 允许访问）")
     print("[提示] 不要关闭这个黑窗口，关闭它 = 退出软件。")
     print("-" * 52)
 
-    uvicorn.run("main:app", host=HOST, port=PORT, log_level="warning")
+    uvicorn.run("main:app", host=BIND_HOST, port=PORT, log_level="warning")
     return 0
 
 
