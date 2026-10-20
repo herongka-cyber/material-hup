@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from db import database
 from routers import scan as scan_router
+from routers import media as media_router
 
 
 @asynccontextmanager
@@ -54,10 +55,10 @@ app.mount("/static", StaticFiles(directory=str(_dashboard_static)), name="static
 # 业务路由挂载（M2 起逐模块追加）
 # ---------------------------------------------------------------------------
 app.include_router(scan_router.router)
+app.include_router(media_router.router)
 
-# 后续模块挂载点（M3 起依次启用）
-# from routers import media, playlist, stream, thumbnail
-# app.include_router(media.router)
+# 后续模块挂载点（M4 起依次启用）
+# from routers import playlist, stream, thumbnail
 # app.include_router(playlist.router)
 # app.include_router(stream.router)
 # app.include_router(thumbnail.router)
