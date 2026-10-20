@@ -10,7 +10,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import database
@@ -66,13 +66,18 @@ app.include_router(thumbnail_router.router)
 app.include_router(stream_router.router)
 app.include_router(features_router.router)
 app.include_router(playlist_router.router)
+# ---------------------------------------------------------------------------
 
-# 后续模块挂载点（M7 起依次启用）
-# from routers import playlist
-# app.include_router(playlist.router)
+
 # ---------------------------------------------------------------------------
-# app.include_router(media.router)
-# app.include_router(playlist.router)
-# app.include_router(stream.router)
-# app.include_router(thumbnail.router)
+# 根路径：返回前端单页
 # ---------------------------------------------------------------------------
+@app.get("/", include_in_schema=False)
+def index_page():
+    index_path = database.PROJECT_ROOT / "static" / "index.html"
+    if index_path.is_file():
+        return FileResponse(str(index_path), media_type="text/html")
+    return JSONResponse(
+        {"detail": "static/index.html 不存在，请检查项目文件是否完整"},
+        status_code=404,
+    )

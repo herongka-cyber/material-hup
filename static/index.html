@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>素材管家 · Material Hub</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-dot"></span>
+        <span>素材管家</span>
+      </div>
+
+      <nav class="nav-section">
+        <div class="nav-title">素材类型</div>
+        <a class="nav-item active" data-type="">全部</a>
+        <a class="nav-item" data-type="bgm">BGM 音乐</a>
+        <a class="nav-item" data-type="sfx">音效</a>
+        <a class="nav-item" data-type="image">图片</a>
+        <a class="nav-item" data-type="video">视频</a>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-title">标签</div>
+        <div class="tag-cloud" id="tagCloud"></div>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-title-row">
+          <span class="nav-title">歌单</span>
+          <button class="icon-btn" id="newPlaylistBtn" title="新建歌单">+</button>
+        </div>
+        <div class="playlist-list" id="playlistList"></div>
+      </nav>
+    </aside>
+
+    <!-- 主区 -->
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input type="text" id="searchInput" class="search-input" placeholder="搜索标题或文件名…">
+        </div>
+        <div class="topbar-actions">
+          <button class="btn" id="backfillBtn">补全 BGM 特征</button>
+          <button class="btn btn-primary" id="scanBtn">扫描素材</button>
+        </div>
+      </header>
+
+      <div class="filter-bar" id="filterBar">
+        <div class="filter-group">
+          <label>BPM</label>
+          <input type="number" id="minBpm" class="filter-input" placeholder="40" min="0" step="1">
+          <span class="filter-sep">–</span>
+          <input type="number" id="maxBpm" class="filter-input" placeholder="220" min="0" step="1">
+        </div>
+        <div class="filter-group">
+          <label>能量</label>
+          <input type="number" id="minEnergy" class="filter-input" placeholder="0" min="0" max="1" step="0.05">
+          <span class="filter-sep">–</span>
+          <input type="number" id="maxEnergy" class="filter-input" placeholder="1" min="0" max="1" step="0.05">
+        </div>
+        <div class="filter-group">
+          <label>评分</label>
+          <select id="minRating" class="filter-select">
+            <option value="">不限</option>
+            <option value="1">≥ 1 星</option>
+            <option value="2">≥ 2 星</option>
+            <option value="3">≥ 3 星</option>
+            <option value="4">≥ 4 星</option>
+            <option value="5">5 星</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>排序</label>
+          <select id="sortSelect" class="filter-select">
+            <option value="created_at:desc">最新</option>
+            <option value="file_name:asc">名称</option>
+            <option value="bpm:asc">BPM ↑</option>
+            <option value="bpm:desc">BPM ↓</option>
+            <option value="energy:asc">能量 ↑</option>
+            <option value="energy:desc">能量 ↓</option>
+            <option value="rating:desc">评分最高</option>
+            <option value="duration:asc">时长 ↑</option>
+            <option value="duration:desc">时长 ↓</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost" id="resetFilterBtn">重置筛选</button>
+      </div>
+
+      <div class="content" id="content">
+        <div class="view-header" id="viewHeader">
+          <div>
+            <div class="view-title" id="viewTitle"></div>
+            <div class="view-sub" id="viewSub"></div>
+          </div>
+          <div class="view-actions" id="viewActions"></div>
+        </div>
+        <div class="media-grid" id="mediaGrid"></div>
+        <div class="playlist-view" id="playlistView" style="display:none;"></div>
+        <div class="empty-state" id="emptyState" style="display:none;">
+          <div class="empty-icon">🎵</div>
+          <div class="empty-text">没有符合条件的素材</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 底部播放条 -->
+  <div class="player" id="player" style="display:none;">
+    <div class="player-info">
+      <div class="player-thumb" id="playerThumb"></div>
+      <div class="player-meta">
+        <div class="player-title" id="playerTitle">未播放</div>
+        <div class="player-sub" id="playerSub"></div>
+      </div>
+    </div>
+    <div class="player-center">
+      <div class="player-controls">
+        <button class="icon-btn" id="prevBtn" title="上一首">⏮</button>
+        <button class="icon-btn play-btn" id="playBtn" title="播放">▶</button>
+        <button class="icon-btn" id="nextBtn" title="下一首">⏭</button>
+      </div>
+      <div class="player-progress">
+        <span id="currentTime" class="time-label">0:00</span>
+        <input type="range" id="progressBar" class="progress-bar" min="0" max="1000" value="0">
+        <span id="totalTime" class="time-label">0:00</span>
+      </div>
+    </div>
+    <div class="player-volume">
+      <span>🔊</span>
+      <input type="range" id="volumeBar" min="0" max="100" value="80" class="volume-bar">
+    </div>
+    <audio id="audio" preload="metadata"></audio>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div class="modal-mask" id="detailModal" style="display:none;">
+    <div class="modal modal-detail">
+      <button class="modal-close" id="detailClose">×</button>
+      <div class="detail-body">
+        <div class="detail-thumb" id="detailThumb"></div>
+        <div class="detail-info" id="detailInfo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 扫描弹窗 -->
+  <div class="modal-mask" id="scanModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="scanClose">×</button>
+      <h2>扫描素材</h2>
+      <div class="form-group">
+        <label>目录路径</label>
+        <input type="text" id="scanPath" class="form-input" placeholder="例如 /Users/me/Music/BGM">
+      </div>
+      <div class="form-group">
+        <label>媒体类型</label>
+        <select id="scanType" class="form-input">
+          <option value="bgm">BGM 音乐</option>
+          <option value="sfx">音效</option>
+          <option value="image">图片</option>
+          <option value="video">视频</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>特征 JSON 索引（可选）</label>
+        <input type="text" id="scanJson" class="form-input" placeholder="例如 /Users/me/Music/bgm_features.json">
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="scanCancel">取消</button>
+        <button class="btn btn-primary" id="scanStart">开始扫描</button>
+      </div>
+      <div class="progress-wrap" id="scanProgressWrap" style="display:none;">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="scanProgressFill"></div>
+        </div>
+        <div class="progress-text" id="scanProgressText"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新建歌单弹窗 -->
+  <div class="modal-mask" id="playlistModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="playlistClose">×</button>
+      <h2>新建歌单</h2>
+      <div class="form-group">
+        <label>歌单名</label>
+        <input type="text" id="playlistName" class="form-input" placeholder="例如：旅行 Vlog BGM">
+      </div>
+      <div class="form-group">
+        <label>描述（可选）</label>
+        <textarea id="playlistDesc" class="form-input" rows="3"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="playlistCancel">取消</button>
+        <button class="btn btn-primary" id="playlistCreate">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加入歌单下拉 -->
+  <div class="dropdown" id="addToPlaylistDropdown" style="display:none;"></div>
+
+  <!-- Toast 容器 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
