@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import database
+from routers import scan as scan_router
 
 
 @asynccontextmanager
@@ -49,9 +50,18 @@ app.mount("/static", StaticFiles(directory=str(_dashboard_static)), name="static
 
 
 # ---------------------------------------------------------------------------
-# 后续模块挂载点（占位注释，M2 起依次启用）
-# from routers import scan, media, playlist, stream, thumbnail
-# app.include_router(scan.router)
+# ---------------------------------------------------------------------------
+# 业务路由挂载（M2 起逐模块追加）
+# ---------------------------------------------------------------------------
+app.include_router(scan_router.router)
+
+# 后续模块挂载点（M3 起依次启用）
+# from routers import media, playlist, stream, thumbnail
+# app.include_router(media.router)
+# app.include_router(playlist.router)
+# app.include_router(stream.router)
+# app.include_router(thumbnail.router)
+# ---------------------------------------------------------------------------
 # app.include_router(media.router)
 # app.include_router(playlist.router)
 # app.include_router(stream.router)
