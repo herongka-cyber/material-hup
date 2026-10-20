@@ -2,7 +2,20 @@
 
 本地素材管理软件（BGM / 音效 / 图片 / 视频），基于 FastAPI + SQLite。
 
-## 运行
+## Windows 桌面版（推荐）
+
+每次 push 到 main 后，GitHub Actions 会自动在 Windows 云主机上构建单文件
+`MaterialHub.exe`：仓库页面 → Actions → 最新一次 "Build Windows Desktop App" →
+Artifacts 下载 `MaterialHub-windows`，解压双击即用。
+
+- 首次启动会自动打开浏览器进入界面；数据（数据库/缩略图）保存在 exe 同级的
+  `data\` 目录里，重装/更新 exe 不会丢。
+- 需要本机安装 ffmpeg 才能用视频缩略图：`winget install Gyan.FFmpeg`
+  （不装也能用，只是视频没有缩略图）。
+- 精简版未打包 librosa：「补全 BGM 特征」按钮在桌面版中不可用，
+  有 JSON 特征索引的曲库不受影响。如需该功能，用下面的源码方式运行。
+
+## 源码运行
 
 ```bash
 pip install -r requirements.txt

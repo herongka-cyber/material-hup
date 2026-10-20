@@ -1,0 +1,12 @@
+# Windows 桌面版打包依赖（精简版，不含 librosa）
+#
+# 说明：librosa 只用于 M6「BGM 特征补全」（给没有 JSON 索引的音乐算 bpm/调性/能量），
+# 打包进去会让 exe 膨胀到 600MB+ 且构建极慢。桌面版 v1 不打包它：
+#  - 有 JSON 特征索引的曲库（M2 流程）不受影响，全部功能正常；
+#  - 点「补全特征」时若缺 librosa，后端会跳过并记录失败，不会崩溃。
+# 如需完整版，在 Windows 上 pip install librosa 后用源码运行即可。
+fastapi==0.115.0
+uvicorn==0.32.0
+mutagen==1.47.0
+Pillow==10.4.0
+pyinstaller==6.11.0
