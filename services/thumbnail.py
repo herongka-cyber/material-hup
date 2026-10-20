@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from db import database
+from services import avtools
 
 # 缩略图最长边
 _THUMB_MAX_SIDE = 320
@@ -29,8 +30,8 @@ _THUMB_MAX_SIDE = 320
 # WebP 质量
 _WEBP_QUALITY = 80
 
-# ffmpeg 路径探测（缓存结果）
-_FFMPEG_PATH: Optional[str] = shutil.which("ffmpeg")
+# ffmpeg 路径探测（缓存结果）：系统 PATH 优先，缺失时回退 imageio-ffmpeg 内置二进制
+_FFMPEG_PATH: Optional[str] = avtools.find_ffmpeg()
 
 # ffmpeg 抽帧超时（秒）
 _FFMPEG_TIMEOUT = 20
@@ -111,9 +112,9 @@ def _generate_video_thumbnail(src: Path, dest: Path, duration: Optional[float]) 
     else:
         ts = 0.5  # 时长未知时退化为从 0.5 秒抽帧
 
-    # 使用临时文件写入，成功后 rename，避免读到半成品
+    # 使用临时文件写入（先抽成 PNG，再由 Pillow 转 WebP：不依赖 ffmpeg 构建是否带 libwebp）
     tmp_fd, tmp_name = tempfile.mkstemp(
-        suffix=".webp", dir=str(database.THUMBNAIL_DIR)
+        suffix=".png", dir=str(database.THUMBNAIL_DIR)
     )
     # 关闭文件描述符，让 ffmpeg 自己打开写
     try:
@@ -131,8 +132,6 @@ def _generate_video_thumbnail(src: Path, dest: Path, duration: Optional[float]) 
         "-frames:v", "1",
         # 最长边 320，等比缩放；不放大
         "-vf", f"scale='min({_THUMB_MAX_SIDE},iw)':'min({_THUMB_MAX_SIDE},ih)':force_original_aspect_ratio=decrease",
-        "-c:v", "libwebp",
-        "-quality", str(_WEBP_QUALITY),
         str(tmp_path),
     ]
 
@@ -164,15 +163,35 @@ def _generate_video_thumbnail(src: Path, dest: Path, duration: Optional[float]) 
             pass
         return False
 
+    # PNG 帧 → WebP（Pillow 转码，避免依赖 ffmpeg 的 libwebp 编码器）
+    webp_fd, webp_name = tempfile.mkstemp(
+        suffix=".webp", dir=str(database.THUMBNAIL_DIR)
+    )
     try:
-        tmp_path.replace(dest)
+        import os
+
+        os.close(webp_fd)
+    except Exception:
+        pass
+    webp_path = Path(webp_name)
+    try:
+        from PIL import Image
+
+        with Image.open(tmp_path) as img:
+            img.save(webp_path, "WEBP", quality=_WEBP_QUALITY)
+        webp_path.replace(dest)
         return True
     except Exception:
+        try:
+            webp_path.unlink()
+        except Exception:
+            pass
+        return False
+    finally:
         try:
             tmp_path.unlink()
         except Exception:
             pass
-        return False
 
 
 def _generate_audio_placeholder(dest: Path, media_type: str) -> bool:

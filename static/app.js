@@ -301,6 +301,10 @@
   function playByIndex(index) {
     const m = state.allMedia[index];
     if (!m) return;
+    if (m.media_type === 'image' || m.media_type === 'video') {
+      openViewer(m);
+      return;
+    }
     if (!isPlayable(m)) {
       toast('该素材不支持播放', 'info');
       return;
@@ -308,7 +312,33 @@
     playMedia(m, index);
   }
 
+  // ------------------ 查看器（视频播放 / 图片原图） ------------------
+  function openViewer(m) {
+    if (!m) return;
+    const body = $('viewerBody');
+    const streamUrl = `/api/media/${m.id}/stream`;
+    if (m.media_type === 'video') {
+      body.innerHTML = `<video src="${streamUrl}" controls autoplay playsinline></video>`;
+    } else if (m.media_type === 'image') {
+      body.innerHTML = `<img src="${streamUrl}" alt="">`;
+    } else {
+      return;
+    }
+    $('viewerCaption').textContent = m.title || m.file_name;
+    $('viewerModal').style.display = 'flex';
+  }
+
+  function closeViewer() {
+    $('viewerModal').style.display = 'none';
+    $('viewerBody').innerHTML = '';
+  }
+
   function playMedia(m, index) {
+    // 视频一律走查看器（带画面的播放器），不进底部音频播放器
+    if (m && m.media_type === 'video') {
+      openViewer(m);
+      return;
+    }
     state.currentIndex = index != null ? index : -1;
     state.currentMedia = m;
     const audio = state.audio;
@@ -462,6 +492,7 @@
 
       <div class="detail-actions">
         ${isPlayable(m) ? '<button class="btn btn-primary" id="detailPlayBtn">▶ 播放</button>' : ''}
+        ${m.media_type === 'image' ? '<button class="btn btn-primary" id="detailViewBtn">查看原图</button>' : ''}
         <button class="btn" id="detailAddPlaylistBtn">加入歌单</button>
       </div>
     `;
@@ -569,6 +600,14 @@
       playBtn.addEventListener('click', () => {
         playMedia(m, state.allMedia.findIndex(x => x.id === m.id));
         closeDetail();
+      });
+    }
+
+    // 事件：查看原图（图片）
+    const viewBtn = $('detailViewBtn');
+    if (viewBtn) {
+      viewBtn.addEventListener('click', () => {
+        openViewer(m);
       });
     }
 
@@ -1011,6 +1050,12 @@
     $('detailClose').addEventListener('click', closeDetail);
     $('detailModal').addEventListener('click', (e) => {
       if (e.target === $('detailModal')) closeDetail();
+    });
+
+    // 查看器弹窗关闭
+    $('viewerClose').addEventListener('click', closeViewer);
+    $('viewerModal').addEventListener('click', (e) => {
+      if (e.target === $('viewerModal')) closeViewer();
     });
 
     // 扫描弹窗

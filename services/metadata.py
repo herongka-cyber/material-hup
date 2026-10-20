@@ -17,12 +17,14 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
 from db import models
+from services import avtools
 
 # ffprobe 路径缓存：启动时探测一次，避免每文件都查 PATH
 _FFPROBE_PATH: Optional[str] = shutil.which("ffprobe")
@@ -124,7 +126,8 @@ def extract_video_metadata(file_path: Path) -> dict[str, Any]:
     """
     result: dict[str, Any] = {}
     if _FFPROBE_PATH is None:
-        return result
+        # ffprobe 缺失（桌面打包版常见）：改用 ffmpeg -i 的输出解析
+        return _extract_video_metadata_via_ffmpeg(file_path)
 
     cmd = [
         _FFPROBE_PATH,
@@ -195,6 +198,60 @@ def extract_video_metadata(file_path: Path) -> dict[str, Any]:
                         result["duration"] = d
                 except Exception:
                     pass
+
+    return result
+
+
+def _extract_video_metadata_via_ffmpeg(file_path: Path) -> dict[str, Any]:
+    """
+    ffprobe 缺失时的回退：解析 `ffmpeg -i` 打到 stderr 的媒体信息。
+
+    可得字段：duration（秒）、bitrate（bps）、width、height。
+    ffmpeg 也不可用或解析失败时返回空 dict，不抛异常。
+    """
+    result: dict[str, Any] = {}
+    ffmpeg = avtools.find_ffmpeg()
+    if ffmpeg is None:
+        return result
+
+    try:
+        proc = subprocess.run(
+            [ffmpeg, "-i", str(file_path)],
+            capture_output=True,
+            text=True,
+            timeout=_FFPROBE_TIMEOUT,
+            check=False,
+        )
+    except Exception:
+        return result
+
+    text = proc.stderr or ""
+
+    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", text)
+    if m:
+        try:
+            d = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
+            if d > 0:
+                result["duration"] = d
+        except Exception:
+            pass
+
+    m = re.search(r"bitrate:\s*(\d+)\s*kb/s", text)
+    if m:
+        try:
+            b = int(m.group(1)) * 1000
+            if b > 0:
+                result["bitrate"] = b
+        except Exception:
+            pass
+
+    m = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", text)
+    if m:
+        try:
+            result["width"] = int(m.group(1))
+            result["height"] = int(m.group(2))
+        except Exception:
+            pass
 
     return result
 
