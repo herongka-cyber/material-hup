@@ -19,6 +19,7 @@ from routers import media as media_router
 from routers import media_write as media_write_router
 from routers import thumbnail as thumbnail_router
 from routers import stream as stream_router
+from routers import features as features_router
 
 
 @asynccontextmanager
@@ -62,6 +63,7 @@ app.include_router(media_router.router)
 app.include_router(media_write_router.router)
 app.include_router(thumbnail_router.router)
 app.include_router(stream_router.router)
+app.include_router(features_router.router)
 
 # 后续模块挂载点（M7 起依次启用）
 # from routers import playlist
