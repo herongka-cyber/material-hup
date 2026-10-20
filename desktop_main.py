@@ -82,6 +82,8 @@ def main() -> int:
     # 延迟导入：必须在 MH_DATA_DIR 设置之后
     import uvicorn  # noqa: E402
 
+    from main import app  # noqa: E402  直接导入 app 对象（不要用 "main:app" 字符串：打包工具分析不到字符串导入，会漏打包主程序模块）
+
     threading.Thread(target=_wait_and_open_browser, daemon=True).start()
 
     lan_ip = _lan_ip()
@@ -92,7 +94,7 @@ def main() -> int:
     print("[提示] 不要关闭这个黑窗口，关闭它 = 退出软件。")
     print("-" * 52)
 
-    uvicorn.run("main:app", host=BIND_HOST, port=PORT, log_level="warning")
+    uvicorn.run(app, host=BIND_HOST, port=PORT, log_level="warning")
     return 0
 
 
