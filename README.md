@@ -12,8 +12,7 @@ Artifacts 下载 `MaterialHub-windows`，解压双击即用。
   `data\` 目录里，重装/更新 exe 不会丢。
 - 需要本机安装 ffmpeg 才能用视频缩略图：`winget install Gyan.FFmpeg`
   （不装也能用，只是视频没有缩略图）。
-- 精简版未打包 librosa：「补全 BGM 特征」按钮在桌面版中不可用，
-  有 JSON 特征索引的曲库不受影响。如需该功能，用下面的源码方式运行。
+- 全量版包含 librosa：「补全 BGM 特征」在桌面版中可用（单曲分析约几十秒）。
 
 ## 源码运行
 
