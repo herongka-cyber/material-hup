@@ -4,26 +4,28 @@
 端点：
     POST   /api/playlists                                      新建歌单
     GET    /api/playlists                                      歌单列表（含 item_count）
-    GET    /api/playlists/{playlist_id}                        歌单详情（items 平铺 media 全字段 + tags）
+    GET    /api/playlists/{playlist_id}                        歌单详情
     PATCH  /api/playlists/{playlist_id}                        修改歌单名/描述
-    DELETE /api/playlists/{playlist_id}                        删除歌单（条目随 FK 级联删除）
+    DELETE /api/playlists/{playlist_id}                        删除歌单
     POST   /api/playlists/{playlist_id}/items                  加条目（幂等）
     DELETE /api/playlists/{playlist_id}/items/{media_id}       删条目
     PUT    /api/playlists/{playlist_id}/items/order            重排
+    POST   /api/playlists/{playlist_id}/export                 导出歌单内素材到目标目录
 
-设计要点：
-- 加条目幂等：UNIQUE 冲突时返回现有条目，不覆盖 note、不改 sort_order。
-- 重排严格校验：请求 order 集合与现有 media_id 集合完全一致，否则 422。
-- 详情接口 items 平铺 media 全字段 + tags + sort_order + note；
-  条目主键字段名用 item_id，避免与 media.id 冲突。
-- 所有写操作显式事务，异常回滚。
+导出端点行为：
+- 目标目录不存在时自动创建（含多级父目录）。
+- 按 sort_order 顺序逐条把媒体文件复制到目标目录；同名文件加 _1、_2 后缀递增。
+- 源文件在磁盘上找不到时跳过并记录；单个文件复制失败不中断整体。
+- 只读数据库、不修改数据库，不动源文件。
 """
 
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from db import database
@@ -63,7 +65,6 @@ class PlaylistPatch(BaseModel):
             stripped = self.name.strip()
             if not stripped:
                 raise ValueError("name 不能为空白")
-            # 归一化后回写，后续端点直接使用
             self.name = stripped
         return self
 
@@ -81,26 +82,37 @@ class PlaylistReorder(BaseModel):
     )
 
 
+class PlaylistExportRequest(BaseModel):
+    """POST /api/playlists/{id}/export 请求体。"""
+    dest_dir: str = Field(..., min_length=1, description="目标文件夹路径")
+    with_manifest: bool = Field(False, description="是否在目标目录生成曲目清单 CSV")
+
+    @field_validator("dest_dir")
+    @classmethod
+    def _strip_dest(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("dest_dir 不能为空白")
+        return stripped
+
+
 # ---------------------------------------------------------------------------
 # 工具函数
 # ---------------------------------------------------------------------------
 
 def _ensure_playlist_exists(cur, playlist_id: int) -> None:
-    """歌单不存在则 404。"""
     cur.execute("SELECT 1 FROM playlists WHERE id = ?", (playlist_id,))
     if cur.fetchone() is None:
         raise HTTPException(status_code=404, detail="歌单不存在")
 
 
 def _ensure_media_exists(cur, media_id: int) -> None:
-    """素材不存在则 404。"""
     cur.execute("SELECT 1 FROM media WHERE id = ?", (media_id,))
     if cur.fetchone() is None:
         raise HTTPException(status_code=404, detail="素材不存在")
 
 
 def _fetch_tags_for_batch(cur, media_ids: list[int]) -> dict[int, list[str]]:
-    """批量取标签，避免 N+1。返回 {media_id: [tag_name, ...]}。"""
     if not media_ids:
         return {}
     placeholders = ",".join("?" for _ in media_ids)
@@ -119,12 +131,38 @@ def _fetch_tags_for_batch(cur, media_ids: list[int]) -> dict[int, list[str]]:
     return result
 
 
-def _fetch_playlist_basic(cur, playlist_id: int) -> dict[str, Any]:
-    """
-    查询歌单主字段 + item_count。
+_TYPE_NAMES = {"bgm": "BGM", "sfx": "音效", "image": "图片", "video": "视频"}
 
-    不存在时抛 404。
+
+def write_manifest_csv(dest_dir: Path, rows: list[dict]) -> str:
+    """在目标目录生成「曲目清单.csv」（带 BOM，Excel 打开不乱码），返回文件名。
+
+    rows 每项：seq(序号)/file_name/title/media_type/duration(秒)/bpm/musical_key/
+    energy/rating(0-5)/tags(list[str])。
     """
+    import csv
+
+    path = dest_dir / "曲目清单.csv"
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow(["序号", "文件名", "标题", "类型", "时长(秒)", "BPM", "调性", "能量", "评分", "标签"])
+        for r in rows:
+            w.writerow([
+                r.get("seq", ""),
+                r.get("file_name", ""),
+                r.get("title", ""),
+                _TYPE_NAMES.get(r.get("media_type", ""), r.get("media_type", "")),
+                round(r["duration"], 1) if r.get("duration") is not None else "",
+                round(r["bpm"], 1) if r.get("bpm") is not None else "",
+                r.get("musical_key") or "",
+                round(r["energy"], 2) if r.get("energy") is not None else "",
+                (f'{r["rating"]} 星' if r.get("rating") else "未评分"),
+                "、".join(r.get("tags") or []),
+            ])
+    return path.name
+
+
+def _fetch_playlist_basic(cur, playlist_id: int) -> dict[str, Any]:
     cur.execute(
         "SELECT p.id, p.name, p.description, p.created_at, "
         "(SELECT COUNT(*) FROM playlist_items pi WHERE pi.playlist_id = p.id) AS item_count "
@@ -144,13 +182,6 @@ def _fetch_playlist_basic(cur, playlist_id: int) -> dict[str, Any]:
 
 
 def _fetch_playlist_items(cur, playlist_id: int) -> list[dict[str, Any]]:
-    """
-    查询歌单的条目（平铺 media 全字段 + sort_order + note + tags）。
-
-    字段冲突处理：
-        playlist_items.id  → item_id
-        media.id            → id
-    """
     cur.execute(
         "SELECT pi.id AS item_id, pi.sort_order, pi.note, pi.media_id, m.* "
         "FROM playlist_items pi "
@@ -170,18 +201,12 @@ def _fetch_playlist_items(cur, playlist_id: int) -> list[dict[str, Any]]:
 
 
 def _fetch_playlist_detail(cur, playlist_id: int) -> dict[str, Any]:
-    """详情 = 主字段 + items 数组。"""
     basic = _fetch_playlist_basic(cur, playlist_id)
     basic["items"] = _fetch_playlist_items(cur, playlist_id)
     return basic
 
 
 def _fetch_single_item(cur, playlist_id: int, media_id: int) -> Optional[dict[str, Any]]:
-    """
-    查询歌单中的单条目（用于加条目幂等返回）。
-
-    结构同 _fetch_playlist_items 的单项。
-    """
     cur.execute(
         "SELECT pi.id AS item_id, pi.sort_order, pi.note, pi.media_id, m.* "
         "FROM playlist_items pi "
@@ -204,7 +229,6 @@ def _fetch_single_item(cur, playlist_id: int, media_id: int) -> Optional[dict[st
 
 @router.post("/playlists", summary="新建歌单")
 def create_playlist(payload: PlaylistCreate) -> dict:
-    """新建歌单，返回歌单对象（含 item_count=0）。"""
     conn = database.get_conn()
     try:
         conn.execute("BEGIN;")
@@ -231,7 +255,6 @@ def create_playlist(payload: PlaylistCreate) -> dict:
 
 @router.get("/playlists", summary="歌单列表")
 def list_playlists() -> list[dict]:
-    """歌单列表，按 created_at 倒序；每个歌单含 item_count。"""
     with database.get_cursor() as cur:
         cur.execute(
             "SELECT p.id, p.name, p.description, p.created_at, "
@@ -254,19 +277,12 @@ def list_playlists() -> list[dict]:
 
 @router.get("/playlists/{playlist_id}", summary="歌单详情")
 def get_playlist(playlist_id: int) -> dict:
-    """
-    歌单详情：主字段 + items 数组。
-
-    每个 item 平铺 media 全字段 + tags + sort_order + note；
-    playlist_item 主键字段名为 item_id。
-    """
     with database.get_cursor() as cur:
         return _fetch_playlist_detail(cur, playlist_id)
 
 
 @router.patch("/playlists/{playlist_id}", summary="修改歌单")
 def patch_playlist(playlist_id: int, payload: PlaylistPatch) -> dict:
-    """PATCH 语义：只更新请求体出现的字段。成功返回更新后的完整歌单。"""
     set_parts: list[str] = []
     params: list[Any] = []
 
@@ -279,7 +295,6 @@ def patch_playlist(playlist_id: int, payload: PlaylistPatch) -> dict:
         params.append(payload.description)
 
     if not set_parts:
-        # PlaylistPatch 已在 model_validator 层拦截，这里是双保险
         raise HTTPException(status_code=422, detail="没有可更新的字段")
 
     conn = database.get_conn()
@@ -311,10 +326,6 @@ def patch_playlist(playlist_id: int, payload: PlaylistPatch) -> dict:
 
 @router.delete("/playlists/{playlist_id}", summary="删除歌单")
 def delete_playlist(playlist_id: int) -> dict:
-    """
-    删除歌单。条目随 FK ON DELETE CASCADE 自动清理。
-    返回 {"deleted": true, "playlist_id": ...}。
-    """
     conn = database.get_conn()
     try:
         conn.execute("BEGIN;")
@@ -341,16 +352,6 @@ def delete_playlist(playlist_id: int) -> dict:
 
 @router.post("/playlists/{playlist_id}/items", summary="加条目")
 def add_item(playlist_id: int, payload: PlaylistItemAdd) -> dict:
-    """
-    向歌单追加条目。
-
-    - 歌单不存在 404
-    - media_id 不存在 404
-    - UNIQUE 冲突（已在歌单中）：幂等返回现有条目，不覆盖 note、不改 sort_order
-    - 正常追加：sort_order = MAX(existing)+1
-
-    返回该条目（平铺 media 全字段 + tags + sort_order + note）。
-    """
     conn = database.get_conn()
     try:
         conn.execute("BEGIN;")
@@ -359,13 +360,11 @@ def add_item(playlist_id: int, payload: PlaylistItemAdd) -> dict:
         _ensure_playlist_exists(cur, playlist_id)
         _ensure_media_exists(cur, payload.media_id)
 
-        # 幂等判断：已存在则直接返回现有条目
         existing = _fetch_single_item(cur, playlist_id, payload.media_id)
         if existing is not None:
             conn.execute("COMMIT;")
             return existing
 
-        # 追加：MAX(sort_order)+1
         cur.execute(
             "SELECT COALESCE(MAX(sort_order), -1) AS m "
             "FROM playlist_items WHERE playlist_id = ?",
@@ -381,7 +380,6 @@ def add_item(playlist_id: int, payload: PlaylistItemAdd) -> dict:
 
         item = _fetch_single_item(cur, playlist_id, payload.media_id)
         conn.execute("COMMIT;")
-        # _fetch_single_item 在事务内查询到的是新插入的行，理论上不可能为 None
         if item is None:
             raise HTTPException(status_code=500, detail="条目写入后查询失败")
         return item
@@ -401,12 +399,6 @@ def add_item(playlist_id: int, payload: PlaylistItemAdd) -> dict:
     "/playlists/{playlist_id}/items/{media_id}", summary="删除条目"
 )
 def remove_item(playlist_id: int, media_id: int) -> dict:
-    """
-    从歌单中移除条目。
-
-    歌单不存在 404；条目不存在（该歌单里没有这个 media_id）404。
-    返回 {"deleted": true, "playlist_id": ..., "media_id": ...}。
-    """
     conn = database.get_conn()
     try:
         conn.execute("BEGIN;")
@@ -441,15 +433,6 @@ def remove_item(playlist_id: int, media_id: int) -> dict:
 
 @router.put("/playlists/{playlist_id}/items/order", summary="重排条目")
 def reorder_items(playlist_id: int, payload: PlaylistReorder) -> dict:
-    """
-    按请求 order 数组顺序重写 sort_order 为 0,1,2,...
-
-    严格校验：order 集合必须与现有 media_id 集合完全一致。
-    - 多传 / 少传 / 有重复 → 422
-    - 歌单不存在 404
-
-    返回重排后的歌单详情（含 items）。
-    """
     conn = database.get_conn()
     try:
         conn.execute("BEGIN;")
@@ -457,7 +440,6 @@ def reorder_items(playlist_id: int, payload: PlaylistReorder) -> dict:
 
         _ensure_playlist_exists(cur, playlist_id)
 
-        # 取现有 media_id 列表
         cur.execute(
             "SELECT media_id FROM playlist_items WHERE playlist_id = ?",
             (playlist_id,),
@@ -465,8 +447,6 @@ def reorder_items(playlist_id: int, payload: PlaylistReorder) -> dict:
         existing_ids = sorted(int(r["media_id"]) for r in cur.fetchall())
         requested_ids = sorted(int(x) for x in payload.order)
 
-        # 长度相等 + 排序后相等 ⇒ 集合完全相同（UNIQUE 保证 existing 无重复）
-        # 若请求含重复，长度会先不等（因为现有无重复）
         if existing_ids != requested_ids:
             raise HTTPException(
                 status_code=422,
@@ -494,3 +474,153 @@ def reorder_items(playlist_id: int, payload: PlaylistReorder) -> dict:
         raise
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# 端点：导出歌单为 M3U 播放列表
+# ---------------------------------------------------------------------------
+
+@router.get("/playlists/{playlist_id}/m3u", summary="导出歌单为 M3U")
+def export_playlist_m3u(playlist_id: int) -> Response:
+    """生成 .m3u8 文本：#EXTINF 时长+标题，下一行是本机绝对路径。
+
+    在装有素材的这台电脑上，VLC、PotPlayer 等播放器可直接打开整单连播。
+    """
+    with database.get_cursor() as cur:
+        detail = _fetch_playlist_detail(cur, playlist_id)
+    lines = ["#EXTM3U"]
+    for it in detail["items"]:
+        dur = int(round(it["duration"])) if it.get("duration") is not None else -1
+        label = it.get("title") or it.get("file_name") or ""
+        lines.append(f"#EXTINF:{dur},{label}")
+        lines.append(it["file_path"])
+    body = "\n".join(lines) + "\n"
+    return Response(
+        content=body,
+        media_type="audio/x-mpegurl; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="playlist_{playlist_id}.m3u8"'
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# 端点：导出歌单素材
+# ---------------------------------------------------------------------------
+
+def _resolve_unique_name(dest_dir: Path, base_name: str) -> Path:
+    """
+    在目标目录里找不冲突的文件名。foo.mp3 冲突时返回 foo_1.mp3、foo_2.mp3 …；
+    后缀保留原扩展名（大小写不敏感），路径以 dest_dir 为父。
+    """
+    candidate = dest_dir / base_name
+    if not candidate.exists():
+        return candidate
+    stem = candidate.stem
+    ext = candidate.suffix  # 含点，如 ".mp3"
+    idx = 1
+    while True:
+        candidate = dest_dir / f"{stem}_{idx}{ext}"
+        if not candidate.exists():
+            return candidate
+        idx += 1
+
+
+@router.post("/playlists/{playlist_id}/export", summary="导出歌单素材到目标目录")
+def export_playlist(playlist_id: int, payload: PlaylistExportRequest) -> dict:
+    """
+    把歌单内的素材文件按顺序复制到 dest_dir。
+
+    - 目标目录不存在则创建。
+    - 同名文件加 _1、_2 后缀递增，不覆盖。
+    - 源文件不存在时跳过并记入 skipped / errors。
+    - 单文件复制失败不中断，记入 errors 后继续下一条。
+    - 只读数据库，不修改数据库，不动源文件。
+    """
+    dest_path = Path(payload.dest_dir).expanduser()
+    # 存在但是文件 → 400；不存在或已是目录 → 后续 mkdir 处理
+    if dest_path.exists() and not dest_path.is_dir():
+        raise HTTPException(status_code=400, detail="目标路径已存在且不是文件夹")
+    try:
+        dest_path.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"无法创建目标文件夹: {exc}")
+
+    # 数据库只读，不开事务；直接把条目一次性读出来
+    try:
+        with database.get_cursor() as cur:
+            _ensure_playlist_exists(cur, playlist_id)
+            cur.execute(
+                "SELECT pi.sort_order, pi.id AS item_id, m.id AS media_id, "
+                "m.file_name, m.file_path, m.title, m.media_type, m.duration, "
+                "m.bpm, m.musical_key, m.energy, m.rating "
+                "FROM playlist_items pi "
+                "JOIN media m ON m.id = pi.media_id "
+                "WHERE pi.playlist_id = ? "
+                "ORDER BY pi.sort_order ASC, pi.id ASC",
+                (playlist_id,),
+            )
+            rows = cur.fetchall()
+            tags_map = _fetch_tags_for_batch(cur, [int(r["media_id"]) for r in rows])
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"查询歌单失败: {exc}")
+
+    copied = 0
+    skipped: list[str] = []
+    errors: list[str] = []
+    manifest_rows: list[dict] = []
+    seq = 0
+
+    for row in rows:
+        file_name = row["file_name"] or ""
+        file_path_str = row["file_path"] or ""
+        if not file_path_str:
+            skipped.append(file_name or "(未知文件)")
+            errors.append(f"{file_name}: 数据库中没有文件路径")
+            continue
+
+        src = Path(file_path_str)
+        if not src.is_file():
+            skipped.append(file_name or src.name)
+            errors.append(f"{file_name or src.name}: 源文件不存在")
+            continue
+
+        # 只取文件名部分，防止路径穿越
+        safe_name = Path(file_name).name if file_name else src.name
+        try:
+            target = _resolve_unique_name(dest_path, safe_name)
+            shutil.copy2(str(src), str(target))
+            copied += 1
+            seq += 1
+            manifest_rows.append({
+                "seq": seq,
+                "file_name": safe_name,
+                "title": row["title"] or "",
+                "media_type": row["media_type"] or "",
+                "duration": row["duration"],
+                "bpm": row["bpm"],
+                "musical_key": row["musical_key"],
+                "energy": row["energy"],
+                "rating": row["rating"] or 0,
+                "tags": tags_map.get(int(row["media_id"]), []),
+            })
+        except Exception as exc:
+            skipped.append(safe_name)
+            errors.append(f"{safe_name}: {exc}")
+
+    manifest_file = None
+    if payload.with_manifest and manifest_rows:
+        try:
+            manifest_file = write_manifest_csv(dest_path, manifest_rows)
+        except Exception as exc:
+            errors.append(f"曲目清单生成失败: {exc}")
+
+    return {
+        "dest_dir": str(dest_path),
+        "copied": copied,
+        "skipped": skipped,
+        "errors": errors,
+        "manifest": manifest_file,
+    }

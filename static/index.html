@@ -4,91 +4,207 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>素材管家 · Material Hub</title>
+
+  <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iI2U4YTMzZCIvPjxnIGZpbGw9IiNmZmZmZmYiPjxlbGxpcHNlIGN4PSIxMSIgY3k9IjIyIiByeD0iNCIgcnk9IjMiLz48cmVjdCB4PSIxNCIgeT0iOCIgd2lkdGg9IjIuNiIgaGVpZ2h0PSIxNSIvPjxwYXRoIGQ9Ik0xNC42IDggcSA2IDEuNSAxMCA4IHYgLTMuNSBxIC00IC01LjUgLTEwIC02LjUiLz48L2c+PC9zdmc+">
+  <link rel="shortcut icon" type="image/svg+xml"
+        href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iI2U4YTMzZCIvPjxnIGZpbGw9IiNmZmZmZmYiPjxlbGxpcHNlIGN4PSIxMSIgY3k9IjIyIiByeD0iNCIgcnk9IjMiLz48cmVjdCB4PSIxNCIgeT0iOCIgd2lkdGg9IjIuNiIgaGVpZ2h0PSIxNSIvPjxwYXRoIGQ9Ik0xNC42IDggcSA2IDEuNSAxMCA4IHYgLTMuNSBxIC00IC01LjUgLTEwIC02LjUiLz48L2c+PC9zdmc+">
+  <meta name="theme-color" content="#0f1115">
+
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
   <div class="app">
-    <!-- 侧边栏 -->
-    <aside class="sidebar">
-      <div class="logo">
-        <span class="logo-dot"></span>
-        <span>素材管家</span>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <div class="logo">
+          <span class="logo-mark"></span>
+          <span class="logo-text">素材管家</span>
+          <span class="logo-tag">Local</span>
+        </div>
+        <button class="sidebar-close" id="sidebarCloseBtn" aria-label="关闭侧栏">×</button>
       </div>
 
-      <nav class="nav-section">
-        <div class="nav-title">素材类型</div>
-        <a class="nav-item active" data-type="">全部</a>
-        <a class="nav-item" data-type="bgm">BGM 音乐</a>
-        <a class="nav-item" data-type="sfx">音效</a>
-        <a class="nav-item" data-type="image">图片</a>
-        <a class="nav-item" data-type="video">视频</a>
-      </nav>
+      <section class="side-section">
+        <div class="side-title">媒体库</div>
+        <nav class="nav-list">
+          <a class="nav-item active" data-type="" tabindex="0" role="button">
+            <span class="nav-dot" style="--c:#9ba1ac"></span>
+            <span class="nav-label">全部</span>
+          </a>
+          <a class="nav-item" data-favorite="1" tabindex="0" role="button">
+            <span class="nav-dot" style="--c:#e35d7a"></span>
+            <span class="nav-label">收藏</span>
+          </a>
+          <a class="nav-item" data-type="bgm" tabindex="0" role="button">
+            <span class="nav-dot" style="--c:#5b8fd4"></span>
+            <span class="nav-label">BGM 音乐</span>
+          </a>
+          <a class="nav-item" data-type="sfx" tabindex="0" role="button">
+            <span class="nav-dot" style="--c:#e8a33d"></span>
+            <span class="nav-label">音效</span>
+          </a>
+          <a class="nav-item" data-type="image" tabindex="0" role="button">
+            <span class="nav-dot" style="--c:#5ba875"></span>
+            <span class="nav-label">图片</span>
+          </a>
+          <a class="nav-item" data-type="video" tabindex="0" role="button">
+            <span class="nav-dot" style="--c:#e35d7a"></span>
+            <span class="nav-label">视频</span>
+          </a>
+        </nav>
+      </section>
 
-      <nav class="nav-section">
-        <div class="nav-title">标签</div>
+      <section class="side-section">
+        <div class="side-title-row">
+          <span class="side-title">标签</span>
+          <button class="mini-btn" id="manageTagsBtn" title="管理标签">✎</button>
+        </div>
         <div class="tag-cloud" id="tagCloud"></div>
-      </nav>
+      </section>
 
-      <nav class="nav-section">
-        <div class="nav-title-row">
-          <span class="nav-title">歌单</span>
-          <button class="icon-btn" id="newPlaylistBtn" title="新建歌单">+</button>
+      <section class="side-section side-section-grow">
+        <div class="side-title-row">
+          <span class="side-title">歌单</span>
+          <button class="mini-btn" id="newPlaylistBtn" title="新建歌单">＋</button>
         </div>
         <div class="playlist-list" id="playlistList"></div>
-      </nav>
+      </section>
+
+      <section class="side-section">
+        <div class="side-title">工具</div>
+        <a class="tool-item" id="cleanupMissingBtn" tabindex="0" role="button">
+          <span class="nav-dot" style="--c:#d95c4a"></span>
+          <span class="nav-label">清理失效素材</span>
+          <span class="missing-count" id="missingCount" style="display:none;"></span>
+        </a>
+        <a class="tool-item" id="statsBtn" tabindex="0" role="button">
+          <span class="nav-dot" style="--c:#5b8fd4"></span>
+          <span class="nav-label">数据统计</span>
+        </a>
+        <a class="tool-item" id="dupBtn" tabindex="0" role="button">
+          <span class="nav-dot" style="--c:#d4a05b"></span>
+          <span class="nav-label">重复检测</span>
+          <span class="missing-count" id="dupCount" style="display:none;"></span>
+        </a>
+        <a class="tool-item" id="historyBtn" tabindex="0" role="button">
+          <span class="nav-dot" style="--c:#9b7fd4"></span>
+          <span class="nav-label">最近播放</span>
+        </a>
+        <a class="tool-item" id="shortcutBtn" tabindex="0" role="button">
+          <span class="nav-dot" style="--c:#4db6ac"></span>
+          <span class="nav-label">快捷键</span>
+        </a>
+        <a class="tool-item" id="aboutBtn" tabindex="0" role="button">
+          <span class="nav-dot" style="--c:#8a919e"></span>
+          <span class="nav-label">关于</span>
+        </a>
+      </section>
     </aside>
 
-    <!-- 主区 -->
     <main class="main">
       <header class="topbar">
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="打开侧栏">≡</button>
         <div class="search-wrap">
-          <input type="text" id="searchInput" class="search-input" placeholder="搜索标题或文件名…">
+          <span class="search-icon">⌕</span>
+          <input type="text" id="searchInput" class="search-input" placeholder="搜索标题、文件名…">
+          <span class="search-hint" id="searchHint">⌘K</span>
         </div>
         <div class="topbar-actions">
-          <button class="btn" id="backfillBtn">补全 BGM 特征</button>
-          <button class="btn btn-primary" id="scanBtn">扫描素材</button>
+          <button class="btn btn-ghost" id="backfillBtn">
+            <span class="btn-ico">✦</span> 补全特征
+          </button>
+          <button class="btn btn-primary" id="scanBtn">
+            <span class="btn-ico">⟳</span> 扫描素材
+          </button>
         </div>
       </header>
 
-      <div class="filter-bar" id="filterBar">
-        <div class="filter-group">
-          <label>BPM</label>
-          <input type="number" id="minBpm" class="filter-input" placeholder="40" min="0" step="1">
-          <span class="filter-sep">–</span>
-          <input type="number" id="maxBpm" class="filter-input" placeholder="220" min="0" step="1">
-        </div>
-        <div class="filter-group">
-          <label>能量</label>
-          <input type="number" id="minEnergy" class="filter-input" placeholder="0" min="0" max="1" step="0.05">
-          <span class="filter-sep">–</span>
-          <input type="number" id="maxEnergy" class="filter-input" placeholder="1" min="0" max="1" step="0.05">
-        </div>
-        <div class="filter-group">
-          <label>评分</label>
-          <select id="minRating" class="filter-select">
-            <option value="">不限</option>
-            <option value="1">≥ 1 星</option>
-            <option value="2">≥ 2 星</option>
-            <option value="3">≥ 3 星</option>
-            <option value="4">≥ 4 星</option>
-            <option value="5">5 星</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>排序</label>
-          <select id="sortSelect" class="filter-select">
-            <option value="created_at:desc">最新</option>
-            <option value="file_name:asc">名称</option>
-            <option value="bpm:asc">BPM ↑</option>
-            <option value="bpm:desc">BPM ↓</option>
-            <option value="energy:asc">能量 ↑</option>
-            <option value="energy:desc">能量 ↓</option>
+      <div class="filter-rail">
+        <button class="filter-toggle" id="filterToggleBtn">
+          <span class="filter-toggle-ico">≡</span>
+          <span>筛选</span>
+          <span class="filter-badge" id="filterBadge" style="display:none">0</span>
+        </button>
+        <div class="filter-chips" id="filterChips"></div>
+        <div class="filter-spacer"></div>
+        <div class="media-count" id="mediaCount"></div>
+        <button class="btn btn-ghost" id="selectModeBtn">多选</button>
+        <button class="btn btn-ghost" id="randomPickBtn">随机试听</button>
+        <button class="btn btn-ghost" id="densityBtn">紧凑视图</button>
+        <button class="btn btn-ghost queue-rail-btn" id="queueBtn" title="播放队列">播放队列<span class="queue-badge" id="queueBadge" style="display:none;">0</span></button>
+        <div class="sort-wrap">
+          <label class="sort-label">排序</label>
+          <select id="sortSelect" class="select">
+            <option value="created_at:desc">最新入库</option>
+            <option value="file_name:asc">名称 A→Z</option>
+            <option value="bpm:asc">BPM 升序</option>
+            <option value="bpm:desc">BPM 降序</option>
+            <option value="energy:asc">能量升序</option>
+            <option value="energy:desc">能量降序</option>
             <option value="rating:desc">评分最高</option>
-            <option value="duration:asc">时长 ↑</option>
-            <option value="duration:desc">时长 ↓</option>
+            <option value="duration:asc">时长最短</option>
+            <option value="duration:desc">时长最长</option>
+            <option value="file_size:desc">文件最大</option>
+            <option value="file_size:asc">文件最小</option>
+            <option value="random:desc">随机排序</option>
           </select>
         </div>
-        <button class="btn btn-ghost" id="resetFilterBtn">重置筛选</button>
+      </div>
+
+      <div class="batch-bar" id="batchBar" style="display:none;">
+        <span class="batch-info" id="batchInfo">已选 0 项</span>
+        <button class="btn" id="batchAddPlaylistBtn">加入歌单</button>
+        <button class="btn" id="batchTagBtn">打标签</button>
+        <button class="btn" id="batchRatingBtn">设评分</button>
+        <button class="btn" id="batchExportBtn">导出</button>
+        <button class="btn" id="batchFavBtn">收藏</button>
+        <button class="btn" id="batchUnfavBtn">取消收藏</button>
+        <div class="filter-spacer"></div>
+        <button class="btn btn-ghost" id="batchSelectAllBtn">全选已加载</button>
+        <button class="btn btn-ghost" id="batchExitBtn">退出多选</button>
+      </div>
+
+      <div class="filter-panel" id="filterPanel" style="display:none;">
+        <div class="filter-panel-groups">
+          <div class="filter-panel-group">
+            <div class="filter-panel-label">BPM 范围</div>
+            <div class="range-row">
+              <input type="number" id="minBpm" class="num-input" placeholder="40" min="0">
+              <span class="range-sep">—</span>
+              <input type="number" id="maxBpm" class="num-input" placeholder="220" min="0">
+            </div>
+          </div>
+          <div class="filter-panel-group">
+            <div class="filter-panel-label">能量范围</div>
+            <div class="range-row">
+              <input type="number" id="minEnergy" class="num-input" placeholder="0" min="0" max="1" step="0.05">
+              <span class="range-sep">—</span>
+              <input type="number" id="maxEnergy" class="num-input" placeholder="1" min="0" max="1" step="0.05">
+            </div>
+          </div>
+          <div class="filter-panel-group">
+            <div class="filter-panel-label">评分</div>
+            <select id="minRating" class="select">
+              <option value="">不限</option>
+              <option value="1">≥ 1 星</option>
+              <option value="2">≥ 2 星</option>
+              <option value="3">≥ 3 星</option>
+              <option value="4">≥ 4 星</option>
+              <option value="5">仅 5 星</option>
+            </select>
+          </div>
+          <div class="filter-panel-group">
+            <div class="filter-panel-label">整理状态</div>
+            <label class="check-row"><input type="checkbox" id="untaggedCheck"> 只看未打标签</label>
+            <label class="check-row"><input type="checkbox" id="unratedCheck"> 只看未评分</label>
+          </div>
+        </div>
+        <div class="filter-panel-tail">
+          <button class="btn btn-ghost" id="resetFilterBtn">重置全部筛选</button>
+        </div>
       </div>
 
       <div class="content" id="content">
@@ -99,19 +215,28 @@
           </div>
           <div class="view-actions" id="viewActions"></div>
         </div>
+
         <div class="media-grid" id="mediaGrid"></div>
+
+        <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+          <button class="btn" id="loadMoreBtn">加载更多</button>
+          <button class="btn btn-ghost" id="loadAllBtn">加载全部</button>
+        </div>
+
         <div class="playlist-view" id="playlistView" style="display:none;"></div>
+
         <div class="empty-state" id="emptyState" style="display:none;">
-          <div class="empty-icon">🎵</div>
-          <div class="empty-text">没有符合条件的素材</div>
+          <div class="empty-ico" id="emptyIcon">♫</div>
+          <div class="empty-title" id="emptyTitle">还没有素材</div>
+          <div class="empty-sub" id="emptySub">点击右上角「扫描素材」导入 BGM、音效、图片或视频</div>
+          <button class="btn btn-primary empty-reset-btn" id="emptyResetBtn" style="display:none;">清除搜索与筛选</button>
         </div>
       </div>
     </main>
   </div>
 
-  <!-- 底部播放条 -->
   <div class="player" id="player" style="display:none;">
-    <div class="player-info">
+    <div class="player-left">
       <div class="player-thumb" id="playerThumb"></div>
       <div class="player-meta">
         <div class="player-title" id="playerTitle">未播放</div>
@@ -120,51 +245,65 @@
     </div>
     <div class="player-center">
       <div class="player-controls">
-        <button class="icon-btn" id="prevBtn" title="上一首">⏮</button>
-        <button class="icon-btn play-btn" id="playBtn" title="播放">▶</button>
-        <button class="icon-btn" id="nextBtn" title="下一首">⏭</button>
+        <button class="ctrl-btn" id="prevBtn" title="上一首">⏮</button>
+        <button class="ctrl-btn ctrl-play" id="playBtn" title="播放">▶</button>
+        <button class="ctrl-btn" id="nextBtn" title="下一首">⏭</button>
+        <button class="ctrl-btn" id="playModeBtn" title="顺序播放">⇉</button>
       </div>
       <div class="player-progress">
-        <span id="currentTime" class="time-label">0:00</span>
-        <input type="range" id="progressBar" class="progress-bar" min="0" max="1000" value="0">
-        <span id="totalTime" class="time-label">0:00</span>
+        <span class="time" id="currentTime">0:00</span>
+        <input type="range" id="progressBar" class="range-accent" min="0" max="1000" value="0">
+        <span class="time" id="totalTime">0:00</span>
       </div>
     </div>
-    <div class="player-volume">
-      <span>🔊</span>
-      <input type="range" id="volumeBar" min="0" max="100" value="80" class="volume-bar">
+    <div class="player-right">
+      <button class="ctrl-btn rate-btn" id="playRateBtn" title="播放速度 1.0x">1.0x</button>
+      <button class="ctrl-btn sleep-btn" id="sleepBtn" title="定时关闭：关闭">⏱</button>
+      <span class="vol-ico">🔊</span>
+      <input type="range" id="volumeBar" min="0" max="100" value="80" class="range-accent vol-range">
     </div>
     <audio id="audio" preload="metadata"></audio>
   </div>
 
-  <!-- 详情弹窗 -->
+  <div class="queue-popup" id="queuePopup" style="display:none;">
+    <div class="queue-head">
+      <span class="queue-title">播放队列</span>
+      <button class="btn btn-ghost btn-sm" id="queueClearBtn">清空</button>
+    </div>
+    <div class="queue-list" id="queueList"></div>
+  </div>
+
   <div class="modal-mask" id="detailModal" style="display:none;">
     <div class="modal modal-detail">
       <button class="modal-close" id="detailClose">×</button>
+      <button class="detail-nav detail-nav-prev" id="detailPrevBtn" title="上一条（←）">‹</button>
+      <button class="detail-nav detail-nav-next" id="detailNextBtn" title="下一条（→）">›</button>
       <div class="detail-body">
-        <div class="detail-thumb" id="detailThumb"></div>
-        <div class="detail-info" id="detailInfo"></div>
+        <div class="detail-cover" id="detailThumb"></div>
+        <div class="detail-info-scroll-wrap" id="detailInfoScrollWrap">
+          <div class="detail-info" id="detailInfo"></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- 查看器弹窗（视频播放 / 图片原图） -->
-  <div class="modal-mask" id="viewerModal" style="display:none;">
-    <div class="modal modal-viewer">
-      <button class="modal-close" id="viewerClose">×</button>
+  <div class="viewer-mask" id="viewerModal" style="display:none;">
+    <div class="viewer-frame" id="viewerFrame">
+      <button class="viewer-close" id="viewerClose" title="关闭">×</button>
       <div class="viewer-body" id="viewerBody"></div>
       <div class="viewer-caption" id="viewerCaption"></div>
     </div>
   </div>
 
-  <!-- 扫描弹窗 -->
   <div class="modal-mask" id="scanModal" style="display:none;">
     <div class="modal">
       <button class="modal-close" id="scanClose">×</button>
-      <h2>扫描素材</h2>
+      <h2 class="modal-title">扫描素材</h2>
+      <p class="modal-sub">选择本机目录，自动索引文件元数据并写入素材库。</p>
+
       <div class="form-group">
         <label>目录路径</label>
-        <input type="text" id="scanPath" class="form-input" placeholder="例如 /Users/me/Music/BGM">
+        <input type="text" id="scanPath" class="form-input" placeholder="D:\音乐\BGM">
       </div>
       <div class="form-group">
         <label>媒体类型</label>
@@ -177,45 +316,259 @@
       </div>
       <div class="form-group">
         <label>特征 JSON 索引（可选）</label>
-        <input type="text" id="scanJson" class="form-input" placeholder="例如 /Users/me/Music/bgm_features.json">
+        <input type="text" id="scanJson" class="form-input" placeholder="D:\音乐\bgm_features.json">
       </div>
-      <div class="form-actions">
-        <button class="btn" id="scanCancel">取消</button>
+
+      <div class="form-actions" id="scanFooterIdle">
+        <button class="btn btn-ghost" id="scanCancel">取消</button>
         <button class="btn btn-primary" id="scanStart">开始扫描</button>
       </div>
+
+      <div class="form-actions" id="scanFooterDone" hidden>
+        <button class="btn btn-primary" id="scanDoneBtn">完成</button>
+      </div>
+
+      <div class="form-actions" id="scanFooterError" hidden>
+        <button class="btn btn-ghost" id="scanErrorCloseBtn">关闭</button>
+        <button class="btn btn-primary" id="scanRetryBtn">重试</button>
+      </div>
+
       <div class="progress-wrap" id="scanProgressWrap" style="display:none;">
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill" id="scanProgressFill"></div>
-        </div>
+        <div class="progress-track"><div class="progress-fill" id="scanProgressFill"></div></div>
         <div class="progress-text" id="scanProgressText"></div>
       </div>
     </div>
   </div>
 
-  <!-- 新建歌单弹窗 -->
   <div class="modal-mask" id="playlistModal" style="display:none;">
     <div class="modal">
       <button class="modal-close" id="playlistClose">×</button>
-      <h2>新建歌单</h2>
+      <h2 class="modal-title" id="playlistModalTitle">新建歌单</h2>
+      <p class="modal-sub">按视频项目把素材编组，方便切换。</p>
+
       <div class="form-group">
         <label>歌单名</label>
-        <input type="text" id="playlistName" class="form-input" placeholder="例如：旅行 Vlog BGM">
+        <input type="text" id="playlistName" class="form-input" placeholder="例如：旅行 Vlog 配乐">
       </div>
       <div class="form-group">
         <label>描述（可选）</label>
         <textarea id="playlistDesc" class="form-input" rows="3"></textarea>
       </div>
+
       <div class="form-actions">
-        <button class="btn" id="playlistCancel">取消</button>
+        <button class="btn btn-ghost" id="playlistCancel">取消</button>
         <button class="btn btn-primary" id="playlistCreate">创建</button>
       </div>
     </div>
   </div>
 
-  <!-- 加入歌单下拉 -->
-  <div class="dropdown" id="addToPlaylistDropdown" style="display:none;"></div>
+  <div class="modal-mask" id="playlistDeleteModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="playlistDeleteClose">×</button>
+      <h2 class="modal-title">删除歌单</h2>
+      <p class="modal-sub">此操作不可恢复，请确认。</p>
 
-  <!-- Toast 容器 -->
+      <div class="delete-info-card" id="playlistDeleteInfo">
+        <div class="delete-info-name" id="playlistDeleteName"></div>
+        <div class="delete-info-meta" id="playlistDeleteMeta"></div>
+      </div>
+
+      <div class="delete-warning">
+        删除后只移除歌单本身，素材文件仍保留在素材库中。
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="playlistDeleteCancel">取消</button>
+        <button class="btn btn-danger" id="playlistDeleteConfirm">删除歌单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="exportPlaylistModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="exportPlaylistClose">×</button>
+      <h2 class="modal-title" id="exportModalTitle">导出歌单</h2>
+      <p class="modal-sub" id="exportModalSub">把歌单内素材按顺序复制到目标文件夹，可直接导入剪映。</p>
+
+      <div class="form-group">
+        <label>目标文件夹</label>
+        <input type="text" id="exportDestDir" class="form-input" placeholder="D:\导出\歌单名">
+      </div>
+      <label class="check-row"><input type="checkbox" id="exportManifestCheck" checked> 同时生成曲目清单 CSV（文件名/时长/BPM/调性/评分/标签）</label>
+
+      <div class="export-result" id="exportResult" style="display:none;"></div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="exportPlaylistCancel">取消</button>
+        <button class="btn btn-primary" id="exportPlaylistConfirm">导出</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="batchPlaylistModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="batchPlaylistClose">×</button>
+      <h2 class="modal-title">加入歌单</h2>
+      <p class="modal-sub" id="batchPlaylistSub">把已选素材加入：</p>
+      <div class="batch-playlist-list" id="batchPlaylistList"></div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="batchPlaylistCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="batchTagModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="batchTagClose">×</button>
+      <h2 class="modal-title">批量打标签</h2>
+      <p class="modal-sub" id="batchTagSub">给已选素材打标签：</p>
+      <div class="batch-tag-list" id="batchTagList"></div>
+      <div class="batch-tag-row">
+        <input type="text" id="batchTagInput" class="tm-edit-input" placeholder="输入新标签名，回车确认">
+        <button class="btn btn-primary" id="batchTagApply">打标签</button>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="batchTagCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="batchRatingModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="batchRatingClose">×</button>
+      <h2 class="modal-title">批量设评分</h2>
+      <p class="modal-sub" id="batchRatingSub">给已选素材统一评分：</p>
+      <div class="batch-rating-row" id="batchRatingRow">
+        <button class="btn batch-rating-btn" data-rating="5">★★★★★</button>
+        <button class="btn batch-rating-btn" data-rating="4">★★★★</button>
+        <button class="btn batch-rating-btn" data-rating="3">★★★</button>
+        <button class="btn batch-rating-btn" data-rating="2">★★</button>
+        <button class="btn batch-rating-btn" data-rating="1">★</button>
+        <button class="btn btn-ghost batch-rating-btn" data-rating="0">清除评分</button>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="batchRatingCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="tagManageModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="tagManageClose">×</button>
+      <h2 class="modal-title">管理标签</h2>
+      <p class="modal-sub">改名会同步到所有打了该标签的素材；删除标签不会删除素材本身。</p>
+      <div class="tm-list" id="tagManageList"></div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="tagManageDone">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="statsModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="statsClose">×</button>
+      <h2 class="modal-title">数据统计</h2>
+      <p class="modal-sub">当前素材库一览。</p>
+      <div id="statsBody">
+        <div class="cleanup-empty">正在统计…</div>
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-primary" href="/api/media/export.csv" download>导出清单 CSV</a>
+        <a class="btn" href="/api/backup.db" download>备份数据库</a>
+        <button class="btn btn-ghost" id="statsDone">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="cleanupModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="cleanupClose">×</button>
+      <h2 class="modal-title">清理失效素材</h2>
+      <p class="modal-sub">下面这些素材的源文件已经不存在了。删除的只是软件里的记录，不涉及任何真实文件。</p>
+
+      <div class="cleanup-list" id="cleanupList"></div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="cleanupCancel">取消</button>
+        <button class="btn btn-danger" id="cleanupPurge" disabled>删除全部记录</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="dupModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="dupClose">×</button>
+      <h2 class="modal-title">重复素材</h2>
+      <p class="modal-sub">按文件内容逐字节比对找出的真重复：同一个文件被复制、改名或换文件夹再扫进来都躲不过；内容不同绝不误报。删记录只删软件里的记录，不动源文件。</p>
+      <div id="dupSummary"></div>
+      <div class="cleanup-list" id="dupList"></div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="dupDone">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="shortcutModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="shortcutClose">×</button>
+      <h2 class="modal-title">快捷键</h2>
+      <p class="modal-sub">常用操作不用摸鼠标。</p>
+      <div class="sc-list">
+        <div class="sc-row"><span class="sc-key">⌘K / Ctrl+K</span><span class="sc-desc">跳到搜索框</span></div>
+        <div class="sc-row"><span class="sc-key">空格</span><span class="sc-desc">播放 / 暂停（在输入框里打字时不触发）</span></div>
+        <div class="sc-row"><span class="sc-key">← / →</span><span class="sc-desc">详情打开时：上一条 / 下一条</span></div>
+        <div class="sc-row"><span class="sc-key">回车</span><span class="sc-desc">打开选中的卡片</span></div>
+        <div class="sc-row"><span class="sc-key">Esc</span><span class="sc-desc">关闭弹窗</span></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="shortcutDone">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="aboutModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="aboutClose">×</button>
+      <h2 class="modal-title">关于素材管家</h2>
+      <p class="modal-sub">本地素材管理：BGM、音效、图片、视频一处管齐，数据只存在你自己的电脑上。</p>
+      <div id="aboutBody">
+        <div class="cleanup-empty">正在读取…</div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="aboutDone">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="renameModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="renameClose">×</button>
+      <h2 class="modal-title">重命名文件</h2>
+      <p class="modal-sub" id="renameSub">把磁盘上的源文件改名（会真实改动你电脑上的文件）。不写扩展名会自动沿用原来的。</p>
+      <div class="form-group">
+        <label>新文件名</label>
+        <input type="text" id="renameInput" class="form-input">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="renameCancel">取消</button>
+        <button class="btn btn-primary" id="renameConfirm">改名</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="historyModal" style="display:none;">
+    <div class="modal">
+      <button class="modal-close" id="historyClose">×</button>
+      <h2 class="modal-title">最近播放</h2>
+      <p class="modal-sub">这台设备上最近播过的素材（最多 30 条），点一条直接再播。</p>
+      <div class="cleanup-list" id="historyList"></div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="historyClear">清空</button>
+        <button class="btn btn-ghost" id="historyDone">完成</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="/static/app.js"></script>
